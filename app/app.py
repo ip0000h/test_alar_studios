@@ -24,13 +24,14 @@ DATA_URLS = [
     'http://json:8000/third_data.json',
 ]
 
+# create an engine and session for sqlalchemy
 engine = create_engine(os.environ.get('DATABASE_URI'))
 Session = sessionmaker(bind=engine)
 session = Session()
 Base = declarative_base()
 
+# create a flask app and upload config
 app = Flask(__name__)
-
 app.config.from_object('config')
 
 # event loop for async json view
@@ -53,6 +54,13 @@ class User(Base):
     username = Column(String(50), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.regular)
+
+    def as_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'role': self.role.name
+        }
 
 
 async def fetch(url, session):
@@ -96,7 +104,7 @@ def admin_required(f):
     """Decorator for pages with admin authentication requirement"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if fsession.get('role') != 'admin':
+        if fsession.get('user_role') != 'admin':
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -106,14 +114,14 @@ def crypt_password(password):
     return hashlib.sha512(password.encode('utf-8')).hexdigest()
 
 
-@login_required
 @app.route('/')
+@login_required
 def index():
     users = session.query(User).all()
     return render_template(
         'index.html',
-        users=users,
-        role_admin=(fsession['role'] == 'admin')
+        users=[user.as_dict() for user in users],
+        role_admin=(fsession['user_role'] == 'admin')
     )
 
 
@@ -124,16 +132,15 @@ def login():
         password = request.form.get('password')
         user = session.query(User).filter_by(username=username).first()
         if user and user.password == crypt_password(password):
-            print(user.role)
             fsession['is_logged'] = True
             fsession['user_id'] = user.id
-            fsession['user_role'] = user.role
+            fsession['user_role'] = user.role.name
             return redirect(url_for('index'))
     return render_template('login.html')
 
 
-@login_required
 @app.route('/logout', methods=['GET'])
+@login_required
 def logout():
     fsession['is_logged'] = False
     fsession['user_id'] = None
@@ -141,11 +148,11 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/create_user', methods=['POST'])
 @login_required
 @admin_required
-@app.route('/create_user')
 def create_user():
-    data = request.json
+    data = request.form
     try:
         new_user = User(
             username=data['username'],
@@ -154,32 +161,34 @@ def create_user():
         )
         session.add(new_user)
         session.commit()
+        return jsonify(new_user.as_dict())
     except Exception as e:
         logging.error(e)
         session.rollback()
 
 
+@app.route('/edit_user/<user_id>', methods=['POST'])
 @login_required
 @admin_required
-@app.route('/edit_user/<user_id>')
 def edit_user(user_id):
-    data = request.json
+    data = request.form
     try:
         user = session.query(User).get(user_id)
         user.username = data['username']
-        user.password = crypt_password(data['password'])
+        # user.password = crypt_password(data['password'])
         user.role = data['role']
         if not user:
             abort(404)
         session.commit()
+        return jsonify(user.as_dict())
     except Exception as e:
         logging.error(e)
         session.rollback()
 
 
+@app.route('/delete_user/<user_id>', methods=['GET'])
 @login_required
 @admin_required
-@app.route('/delete_user/<user_id>')
 def delete_user(user_id):
     try:
         user = session.query(User).get(user_id)
@@ -187,6 +196,7 @@ def delete_user(user_id):
             abort(404)
         session.delete(user)
         session.commit()
+        return jsonify({'success': True})
     except Exception as e:
         logging.error(e)
         session.rollback()
@@ -200,6 +210,7 @@ def json_async():
 
 if __name__ == "__main__":
     Base.metadata.create_all(engine)
+    # create default admin user for testing
     admin_user = session.query(User).filter_by(username='admin').first()
     if not admin_user:
         admin_user = User(
@@ -208,5 +219,15 @@ if __name__ == "__main__":
             password=crypt_password('admin')
         )
         session.add(admin_user)
+        session.commit()
+    # create default regular user for testing
+    regular_user = session.query(User).filter_by(username='regular').first()
+    if not regular_user:
+        regular_user = User(
+            username='regular',
+            role='regular',
+            password=crypt_password('regular')
+        )
+        session.add(regular_user)
         session.commit()
     app.run(host='0.0.0.0', port=5000, debug=True)

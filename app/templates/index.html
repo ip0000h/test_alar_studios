@@ -3,23 +3,23 @@
 {% block content %}
 <div class="wrapper">
 
-    <!-- New user modal -->
-
     <!-- Users table -->
     <div class="users-table">
-        {% if role_admin  %}
-            <button class="btn btn-sm btn-primary" id="new-user">New user</button>
-        {% endif %}
+
         <table class="table">
             <thead class="thead-dark">
                 <tr>
                   <th scope="col">#</th>
                   <th scope="col">Username</th>
                   <th scope="col">Role</th>
-                  {% if role_admin %}
-                    <th scope="col"></th>
-                    <th scope="col"></th>
-                  {% endif %}
+                    <th scope="col">
+                        {% if role_admin  %}
+                            <button class="btn btn-sm btn-primary" id="new-user" data-toggle="modal" data-target="#newUserModal">New user</button>
+                        {% endif %}
+                    </th>
+                    <th scope="col">
+                        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-warning">Logout</button>
+                    </th>
                 </tr>
               </thead>
               <tbody>
@@ -29,14 +29,71 @@
                         <td>{{ user.username }}</td>
                         <td>{{ user.role }}</td>
                         {% if role_admin %}
-                            <td><a class="btn btn-sm btn-primary">Save</a></td>
-                            <td><a class="btn btn-sm btn-danger">Delete</a></td>
+                            <td><button class="btn btn-sm btn-primary" onclick="changeUser(this, '{{ user.id }}', '{{ user.username }}', '{{ user.role }}')">Save</button></td>
+                            <td><button class="btn btn-sm btn-danger" onclick="deleteUser(this, '{{ user.id }}')">Delete</button></td>
                         {% endif %}
                     </tr>
                 {% endfor %}
               </tbody>
         </table>
+
+    </div>
+
+    <!-- New user modal -->
+    <div class="modal fade" id="newUserModal" tabindex="-1" role="dialog" aria-labelledby="new-user-modal-label" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="new-user-modal-label">New User</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <input type="text" id="username" class="input" name="username" placeholder="username">
+                        <input type="password" id="password" class="input" name="password" placeholder="password">
+                    </div>
+                    <div class="form-group">
+                        <select class="custom-select" id="roleSelect">
+                            <option selected value="admin">Admin</option>
+                            <option value="regular">Regular</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="new-user-save">Save user</button>
+            </div>
+            </div>
+        </div>
     </div>
 
 </div>
+
+<script>
+$(function() {
+    $("#new-user-save").click(function(){
+        $.post('/create_user', {username: $('#username').val(), password: $('#password').val(), role: $('#roleSelect').val()}, function(data) {
+            console.log(data);
+            $('#newUserModal').modal('hide');
+            //TODO: add user to the table
+            location.reload();
+        });
+    });
+});
+function changeUser(element, id, username, role) {
+    $.get('/edit_user/' + id, {username: username, role: role}, function(data) {
+        console.log(data);
+    });
+}
+function deleteUser(element, id) {
+    $.get('/delete_user/' + id, function(data) {
+        console.log(data);
+        element.parentNode.parentNode.remove();
+    });
+}
+</script>
 {% endblock %}
