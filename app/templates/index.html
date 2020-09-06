@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="wrapper">
+
+    <!-- New user modal -->
+
+    <!-- Users table -->
+    <div class="users-table">
+        {% if role_admin  %}
+            <button class="btn btn-sm btn-primary" id="new-user">New user</button>
+        {% endif %}
+        <table class="table">
+            <thead class="thead-dark">
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Username</th>
+                  <th scope="col">Role</th>
+                  {% if role_admin %}
+                    <th scope="col"></th>
+                    <th scope="col"></th>
+                  {% endif %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                    <tr>
+                        <th scope="row">{{ user.id }}</th>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.role }}</td>
+                        {% if role_admin %}
+                            <td><a class="btn btn-sm btn-primary">Save</a></td>
+                            <td><a class="btn btn-sm btn-danger">Delete</a></td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+              </tbody>
+        </table>
+    </div>
+
+</div>
+{% endblock %}
