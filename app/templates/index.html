@@ -9,9 +9,9 @@
         <table class="table">
             <thead class="thead-dark">
                 <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">Username</th>
-                  <th scope="col">Role</th>
+                    <th scope="col">#</th>
+                    <th scope="col">Username</th>
+                    <th scope="col">Role</th>
                     <th scope="col">
                         {% if role_admin  %}
                             <button class="btn btn-sm btn-primary" id="new-user" data-toggle="modal" data-target="#newUserModal">New user</button>
@@ -20,16 +20,34 @@
                     <th scope="col">
                         <a href="{{ url_for('logout') }}" class="btn btn-sm btn-warning">Logout</button>
                     </th>
+                    <th scope="col">
+                    </th>
                 </tr>
               </thead>
               <tbody>
                 {% for user in users %}
                     <tr>
                         <th scope="row">{{ user.id }}</th>
-                        <td>{{ user.username }}</td>
-                        <td>{{ user.role }}</td>
                         {% if role_admin %}
-                            <td><button class="btn btn-sm btn-primary" onclick="changeUser(this, '{{ user.id }}', '{{ user.username }}', '{{ user.role }}')">Save</button></td>
+                        <td>
+                            <input class="userName" type="text" value="{{ user.username }}">
+                        </td>
+                        {% else %}
+                        <td>{{ user.username }}</td>
+                        {% endif %}
+                        {% if role_admin %}
+                        <td>
+                        <select class="userRole custom-select">
+                            <option {% if user.role == 'admin' %} selected {% endif %} value="admin">Admin</option>
+                            <option {% if user.role == 'regular' %} selected {% endif %} value="regular">Regular</option>
+                        </select>
+                        </td>
+                        {% else %}
+                        <td>{{ user.role }}</td>
+                        {% endif %}
+                        {% if role_admin %}
+                            <td><input type="password" class="userPassword input" name="password" placeholder="password"></td>
+                            <td><button class="btn btn-sm btn-primary" onclick="changeUser(this, '{{ user.id }}')">Save</button></td>
                             <td><button class="btn btn-sm btn-danger" onclick="deleteUser(this, '{{ user.id }}')">Delete</button></td>
                         {% endif %}
                     </tr>
@@ -84,8 +102,11 @@ $(function() {
         });
     });
 });
-function changeUser(element, id, username, role) {
-    $.get('/edit_user/' + id, {username: username, role: role}, function(data) {
+function changeUser(element, id) {
+    var username = element.parentNode.parentNode.getElementsByClassName('userName')[0].value;
+    var role = element.parentNode.parentNode.getElementsByClassName('userRole')[0].value;
+    var password = element.parentNode.parentNode.getElementsByClassName('userPassword')[0].value;
+    $.post('/edit_user/' + id, {username: username, role: role, password: password}, function(data) {
         console.log(data);
     });
 }

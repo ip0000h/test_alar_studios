@@ -191,11 +191,8 @@ def edit_user(user_id):
 @admin_required
 def delete_user(user_id):
     try:
-        user = session.query(User).get(user_id)
-        if not user:
-            abort(404)
-        session.delete(user)
-        session.commit()
+        # for show raw sql
+        session.execute('DELETE FROM users WHERE id = :user_id', {'user_id': user_id})
         return jsonify({'success': True})
     except Exception as e:
         logging.error(e)
